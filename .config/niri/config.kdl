@@ -1,0 +1,344 @@
+prefer-no-csd
+
+// spawn-at-startup "alacritty" "-e" "fish"
+spawn-at-startup "waybar"
+spawn-at-startup "swaybg" "-i" "/home/nick/Pictures/Wallpapers/Gaen.png" "-m" "fill"
+spawn-at-startup "xembedsniproxy"
+spawn-at-startup "systemctl" "--user" "set-environment" "WINE_FULLSCREEN_INTEGER_SCALING=1"
+
+debug {
+    // preview-render "screencast"
+    // preview-render "screen-capture"
+    // dbus-interfaces-in-non-session-instances
+    // wait-for-frame-completion-before-queueing
+    // enable-overlay-planes
+    disable-cursor-plane
+    // disable-direct-scanout
+    // render-drm-device "/dev/dri/renderD129"
+    // render-drm-device "/dev/dri/card1"
+    // enable-color-transformations-capability
+    // emulate-zero-presentation-time
+}
+
+input {
+    keyboard {
+        xkb {
+            layout "br, us"
+            variant "abnt2,"
+            options "compose:ralt,ctrl:nocaps"
+        }
+
+        repeat-delay 500
+        repeat-rate 30
+
+        // track-layout "window"
+    }
+
+    touchpad {
+        tap
+        // dwt
+        // dwtp
+        natural-scroll
+        accel-speed 0.4
+        // click-method "clickfinger"
+        // accel-profile "flat"
+        // tap-button-map "left-middle-right"
+    }
+
+    mouse {
+        // natural-scroll
+        accel-speed 0.8
+        // accel-profile "flat"
+    }
+
+    tablet {
+        // map-to-output "eDP-1"
+        // map-to-output "HDMI-A-1"
+    }
+
+    // disable-power-key-handling
+    // warp-mouse-to-focus
+    // focus-follows-mouse
+    // workspace-auto-back-and-forth
+}
+
+layout {
+    focus-ring {
+        off
+        width 2
+        // catppuccin-mocha Sapphire
+        active-color "#74c7ec"
+        // catppuccin-mocha Surface2
+        inactive-color "#585b70"
+
+        // active-gradient from="#80c8ff" to="#bbddff" angle=45
+    }
+
+    border {
+        // off
+        width 2
+
+        // active-color "#f38ba8"
+        // inactive-color "#585b70"
+
+        active-gradient from="#f38ba8" to="#f9e2af" angle=45 relative-to="workspace-view"
+        inactive-gradient from="#585b70" to="#7f849c" angle=45 relative-to="workspace-view"
+
+    }
+
+    preset-column-widths {
+        proportion 0.5
+        proportion 1.0
+        // fixed 1000
+    }
+
+    default-column-width { proportion 1.0; }
+
+    gaps 4 
+
+    struts {
+        // left 64
+        // right 64
+        // top 44
+        // bottom 64
+        // top 64
+    }
+
+    // center-focused-column "on-overflow"
+    // center-focused-column "always"
+}
+
+cursor {
+    // xcursor-theme "breeze_cursors"
+    // xcursor-size 24
+    // hide-when-typing
+    // hide-after-inactive-ms 1000
+}
+
+environment {
+    // GSK_RENDERER "cairo"
+    // WAYLAND_DISPLAY null
+}
+
+screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
+
+hotkey-overlay {
+    skip-at-startup
+}
+
+gestures {
+    hot-corners {
+        off
+    }
+}
+
+animations {
+    // off
+    // slowdown 10.0
+    // slowdown 4.0
+    // slowdown 2.0
+    // slowdown 1.5
+
+    workspace-switch {
+        // off
+        // duration-ms 2500
+        // curve "ease-out-cubic"
+        // spring damping-ratio=1.0 stiffness=1000 epsilon=0.0001
+    }
+
+    window-open {
+        // off
+        // duration-ms 2500
+        // curve "ease-out-expo"
+        // spring damping-ratio=0.8 stiffness=1000 epsilon=0.0001
+    }
+
+    window-close {
+        // off
+        // duration-ms 2500
+        // curve "ease-out-cubic"
+        // spring damping-ratio=0.8 stiffness=1000 epsilon=0.0001
+    }
+
+    horizontal-view-movement {
+        // off
+        // duration-ms 500
+        // curve "ease-out-cubic"
+        // spring damping-ratio=1.0 stiffness=20 epsilon=0.00001
+        // spring damping-ratio=10.0 stiffness=800 epsilon=0.0001
+    }
+
+    window-movement {
+        // off
+        // duration-ms 750
+        // curve "ease-out-cubic"
+        // spring damping-ratio=1.0 stiffness=20 epsilon=0.00001
+        // spring damping-ratio=0.2 stiffness=800 epsilon=0.0001
+    }
+
+    window-resize {
+        // off
+        // duration-ms 500
+        // duration-ms 2500
+        // curve "ease-out-cubic"
+        // spring damping-ratio=0.2 stiffness=800 epsilon=0.0001
+
+        custom-shader r"
+            vec4 resize_color(vec3 coords_curr_geo, vec3 size_curr_geo) {
+                vec3 coords_next_geo = niri_curr_geo_to_next_geo * coords_curr_geo;
+                vec3 coords_prev_geo = niri_curr_geo_to_prev_geo * coords_curr_geo;
+
+                vec3 coords_crop = niri_geo_to_tex_next * coords_next_geo;
+                vec3 coords_stretch = niri_geo_to_tex_next * coords_curr_geo;
+                vec3 coords_stretch_prev = niri_geo_to_tex_prev * coords_curr_geo;
+
+                // We can crop if the current window size is smaller than the next window
+                // size. One way to tell is by comparing to 1.0 the X and Y scaling
+                // coefficients in the current-to-next transformation matrix.
+                bool can_crop_by_x = niri_curr_geo_to_next_geo[0][0] <= 1.0;
+                bool can_crop_by_y = niri_curr_geo_to_next_geo[1][1] <= 1.0;
+                bool crop = can_crop_by_x && can_crop_by_y;
+
+                vec4 color;
+
+                if (crop) {
+                    // However, when we crop, we also want to crop out anything outside the
+                    // current geometry. This is because the area of the shader is unspecified
+                    // and usually bigger than the current geometry, so if we don't fill pixels
+                    // outside with transparency, the texture will leak out.
+                    //
+                    // When stretching, this is not an issue because the area outside will
+                    // correspond to client-side decoration shadows, which are already supposed
+                    // to be outside.
+                    if (coords_curr_geo.x < 0.0 || 1.0 < coords_curr_geo.x ||
+                            coords_curr_geo.y < 0.0 || 1.0 < coords_curr_geo.y) {
+                        color = vec4(0.0);
+                    } else {
+                        color = texture2D(niri_tex_next, coords_crop.st);
+                    }
+                } else {
+                    // If we can't crop, then crossfade.
+                    color = texture2D(niri_tex_next, coords_stretch.st);
+                    vec4 color_prev = texture2D(niri_tex_prev, coords_stretch_prev.st);
+                    color = mix(color_prev, color, niri_clamped_progress);
+                }
+
+                return color;
+            }
+        "
+    }
+
+    config-notification-open-close {
+        // off
+        // duration-ms 250
+        // curve "ease-out-cubic"
+        // spring damping-ratio=0.1 stiffness=1000 epsilon=0.001
+    }
+}
+output "winit" {
+    // scale 2.0
+    // scale 3.0
+    // transform "flipped-90"
+    position x=100 y=200
+}
+
+output "DP-1" {
+}
+output "DP-2" {
+}
+output "DP-3" {
+    // off
+    position x=-2020 y=0
+    mode "1920x1080@60.000"
+    // transform "90"
+    // variable-refresh-rate
+}
+output "HDMI-A-1" {
+    position x=0 y=0
+    mode "1920x1080@60.000"
+}
+window-rule {
+    match app-id="dota2"
+    match at-startup=true
+    open-on-output "DP-3"
+}
+window-rule {
+    match app-id="steam_app_1449850"
+    match title="masterduel"
+    match at-startup=true
+    open-on-output "DP-3"
+}
+window-rule {
+    match app-id="steam_app_1384160"
+    match title="Guilty Gear -Strive-  "
+    match at-startup=true
+    open-on-output "DP-3"
+}
+window-rule {
+    match app-id="discord"
+    match at-startup=true
+    open-on-output "HDMI-A-1"
+}
+window-rule {
+    match app-id="CurseForge"
+    match at-startup=true
+    open-on-output "HDMI-A-1"
+}
+window-rule {
+    match app-id="steam_app_0" title="^Battle.net$"
+    match at-startup=true
+    open-on-output "DP-3"
+    open-on-workspace "launcher"
+}
+window-rule {
+    match app-id="faugus-launcher"
+    match at-startup=true
+    open-on-output "DP-3"
+    open-on-workspace "launcher"
+    open-floating true
+    default-floating-position x=100 y=100 relative-to="top-right"
+}
+window-rule {
+    match app-id="steam_app_0" title="World of Warcraft" 
+    open-fullscreen true
+    open-maximized-to-edges true 
+    default-column-width { fixed 1920; }
+    open-on-output "DP-3"
+    open-on-workspace "game"
+}
+window-rule {
+    match app-id="kitty"
+    default-window-height { proportion 0.5; }
+    default-column-width { proportion 0.5; }
+}
+workspace "launcher" {
+    open-on-output "DP-3"
+    layout {
+        gaps 0
+        struts {} 
+        border {
+            off
+        }
+        focus-ring {
+            off
+        }
+    }
+}
+
+
+workspace "game" {
+    open-on-output "DP-3"
+    layout {
+        gaps 0
+        struts {} 
+        border {
+            off
+        }
+        focus-ring {
+            off
+        }
+    }
+}
+
+
+include "keybinds.kdl"
